@@ -1,0 +1,2030 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>NetGuard — Threat Identification in Computer Networks</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;500;600;700&family=Exo+2:wght@300;400;600;700;900&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+
+  <style>
+    /* ===== CSS VARIABLES & RESET ===== */
+    :root {
+      --bg-primary:    #040810;
+      --bg-secondary:  #080f1a;
+      --bg-card:       #0b1527;
+      --bg-card-hover: #0f1d38;
+      --accent-cyan:   #00f5ff;
+      --accent-green:  #00ff88;
+      --accent-red:    #ff2d55;
+      --accent-amber:  #ffb800;
+      --text-primary:  #e8f4ff;
+      --text-secondary:#8ab0cc;
+      --text-muted:    #4a6a85;
+      --border:        rgba(0,245,255,0.15);
+      --border-bright: rgba(0,245,255,0.5);
+      --glow-cyan:     0 0 20px rgba(0,245,255,0.4);
+      --glow-green:    0 0 20px rgba(0,255,136,0.4);
+      --glow-red:      0 0 20px rgba(255,45,85,0.4);
+      --font-display:  'Exo 2', sans-serif;
+      --font-body:     'Rajdhani', sans-serif;
+      --font-mono:     'Share Tech Mono', monospace;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { scroll-behavior: smooth; font-size: 16px; }
+
+    body {
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      font-family: var(--font-body);
+      font-size: 1rem;
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+
+    /* ===== SCROLLBAR ===== */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg-secondary); }
+    ::-webkit-scrollbar-thumb { background: var(--accent-cyan); border-radius: 3px; }
+
+    /* ===== LOADER ===== */
+    #loader {
+      position: fixed; inset: 0; z-index: 9999;
+      background: var(--bg-primary);
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 1.5rem;
+      transition: opacity 0.6s ease, visibility 0.6s ease;
+    }
+    #loader.hidden { opacity: 0; visibility: hidden; }
+
+    .loader-logo {
+      font-family: var(--font-display);
+      font-size: 2rem; font-weight: 900;
+      color: var(--accent-cyan);
+      letter-spacing: 6px;
+      text-transform: uppercase;
+      animation: pulse-glow 1.5s infinite alternate;
+    }
+    .loader-bar {
+      width: 260px; height: 3px;
+      background: var(--border);
+      border-radius: 2px; overflow: hidden;
+      position: relative;
+    }
+    .loader-bar::after {
+      content: '';
+      position: absolute; top: 0; left: -40%;
+      width: 40%; height: 100%;
+      background: linear-gradient(90deg, transparent, var(--accent-cyan), transparent);
+      animation: loader-slide 1.2s infinite ease-in-out;
+    }
+    .loader-text {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      letter-spacing: 2px;
+      animation: blink 1s infinite;
+    }
+    @keyframes loader-slide { from { left: -40%; } to { left: 110%; } }
+    @keyframes blink { 0%,100%{opacity:1;} 50%{opacity:0.3;} }
+    @keyframes pulse-glow {
+      from { text-shadow: 0 0 10px rgba(0,245,255,0.5); }
+      to   { text-shadow: 0 0 30px rgba(0,245,255,1), 0 0 60px rgba(0,245,255,0.5); }
+    }
+
+    /* ===== NAVBAR ===== */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
+      padding: 0 2rem;
+      display: flex; align-items: center; justify-content: space-between;
+      height: 68px;
+      background: rgba(4,8,16,0.85);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border);
+      transition: background 0.3s;
+    }
+    .nav-logo {
+      font-family: var(--font-display);
+      font-size: 1.5rem; font-weight: 900;
+      color: var(--accent-cyan);
+      letter-spacing: 3px;
+      text-decoration: none;
+      text-shadow: var(--glow-cyan);
+    }
+    .nav-logo span { color: var(--accent-green); }
+
+    .nav-links {
+      display: flex; gap: 0.25rem; list-style: none;
+    }
+    .nav-links a {
+      display: block; padding: 0.4rem 0.85rem;
+      font-family: var(--font-body);
+      font-size: 0.85rem; font-weight: 600;
+      letter-spacing: 1px; text-transform: uppercase;
+      color: var(--text-secondary);
+      text-decoration: none;
+      border-radius: 4px;
+      transition: color 0.2s, background 0.2s;
+    }
+    .nav-links a:hover {
+      color: var(--accent-cyan);
+      background: rgba(0,245,255,0.08);
+    }
+
+    .nav-hamburger {
+      display: none;
+      flex-direction: column; gap: 5px;
+      cursor: pointer; padding: 4px;
+    }
+    .nav-hamburger span {
+      display: block; width: 26px; height: 2px;
+      background: var(--accent-cyan);
+      border-radius: 2px;
+      transition: transform 0.3s, opacity 0.3s;
+    }
+    .nav-hamburger.open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+    .nav-hamburger.open span:nth-child(2) { opacity: 0; }
+    .nav-hamburger.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+    .nav-mobile {
+      display: none;
+      position: fixed; top: 68px; left: 0; right: 0;
+      background: rgba(4,8,16,0.97);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border);
+      padding: 1rem 2rem 1.5rem;
+      z-index: 999;
+      flex-direction: column; gap: 0.25rem;
+    }
+    .nav-mobile.open { display: flex; }
+    .nav-mobile a {
+      padding: 0.65rem 0;
+      font-family: var(--font-body);
+      font-size: 1rem; font-weight: 600;
+      letter-spacing: 1px;
+      color: var(--text-secondary);
+      text-decoration: none;
+      border-bottom: 1px solid var(--border);
+      transition: color 0.2s;
+    }
+    .nav-mobile a:hover { color: var(--accent-cyan); }
+
+    /* ===== SECTION COMMON ===== */
+    section { padding: 5rem 2rem; position: relative; }
+    .container { max-width: 1200px; margin: 0 auto; }
+
+    .section-tag {
+      display: inline-block;
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: var(--accent-cyan);
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      margin-bottom: 0.75rem;
+    }
+    .section-title {
+      font-family: var(--font-display);
+      font-size: clamp(2rem, 4vw, 3rem);
+      font-weight: 900;
+      line-height: 1.1;
+      margin-bottom: 1rem;
+    }
+    .section-title .highlight { color: var(--accent-cyan); }
+    .section-subtitle {
+      font-size: 1.1rem;
+      color: var(--text-secondary);
+      max-width: 640px;
+      margin-bottom: 3rem;
+    }
+
+    /* ===== HERO ===== */
+    #home {
+      min-height: 100vh;
+      display: flex; align-items: center;
+      padding-top: 68px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .hero-grid-bg {
+      position: absolute; inset: 0;
+      background-image:
+        linear-gradient(rgba(0,245,255,0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,245,255,0.04) 1px, transparent 1px);
+      background-size: 60px 60px;
+      animation: grid-drift 20s linear infinite;
+    }
+    @keyframes grid-drift {
+      from { background-position: 0 0; }
+      to   { background-position: 60px 60px; }
+    }
+
+    .hero-glow {
+      position: absolute;
+      width: 700px; height: 700px;
+      border-radius: 50%;
+      filter: blur(120px);
+      pointer-events: none;
+    }
+    .hero-glow-1 {
+      background: radial-gradient(circle, rgba(0,245,255,0.12) 0%, transparent 70%);
+      top: -200px; right: -100px;
+      animation: float 8s ease-in-out infinite;
+    }
+    .hero-glow-2 {
+      background: radial-gradient(circle, rgba(0,255,136,0.08) 0%, transparent 70%);
+      bottom: -200px; left: -200px;
+      animation: float 10s ease-in-out infinite reverse;
+    }
+    @keyframes float {
+      0%,100% { transform: translateY(0); }
+      50%      { transform: translateY(-30px); }
+    }
+
+    .hero-content { position: relative; z-index: 1; }
+
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: 0.5rem;
+      background: rgba(0,245,255,0.08);
+      border: 1px solid var(--border);
+      border-radius: 30px;
+      padding: 0.4rem 1rem;
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: var(--accent-cyan);
+      letter-spacing: 2px;
+      margin-bottom: 1.5rem;
+    }
+    .hero-badge .dot {
+      width: 6px; height: 6px;
+      background: var(--accent-green);
+      border-radius: 50%;
+      animation: blink 1.5s infinite;
+    }
+
+    .hero-title {
+      font-family: var(--font-display);
+      font-size: clamp(2.5rem, 6vw, 5.5rem);
+      font-weight: 900;
+      line-height: 1.0;
+      margin-bottom: 1.5rem;
+    }
+    .hero-title .line1 { display: block; color: var(--text-primary); }
+    .hero-title .line2 {
+      display: block;
+      background: linear-gradient(90deg, var(--accent-cyan), var(--accent-green));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .hero-description {
+      font-size: 1.15rem;
+      color: var(--text-secondary);
+      max-width: 600px;
+      margin-bottom: 2.5rem;
+      line-height: 1.7;
+    }
+
+    .hero-btns { display: flex; gap: 1rem; flex-wrap: wrap; }
+
+    .btn-primary {
+      display: inline-flex; align-items: center; gap: 0.5rem;
+      padding: 0.85rem 2rem;
+      background: var(--accent-cyan);
+      color: var(--bg-primary);
+      font-family: var(--font-body);
+      font-size: 0.95rem; font-weight: 700;
+      letter-spacing: 1.5px; text-transform: uppercase;
+      border: none; border-radius: 6px;
+      text-decoration: none; cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--glow-cyan);
+    }
+
+    .btn-outline {
+      display: inline-flex; align-items: center; gap: 0.5rem;
+      padding: 0.85rem 2rem;
+      background: transparent;
+      color: var(--accent-cyan);
+      font-family: var(--font-body);
+      font-size: 0.95rem; font-weight: 700;
+      letter-spacing: 1.5px; text-transform: uppercase;
+      border: 1px solid var(--border-bright);
+      border-radius: 6px;
+      text-decoration: none; cursor: pointer;
+      transition: transform 0.2s, background 0.2s, box-shadow 0.2s;
+    }
+    .btn-outline:hover {
+      background: rgba(0,245,255,0.08);
+      transform: translateY(-2px);
+      box-shadow: var(--glow-cyan);
+    }
+
+    .hero-stats {
+      display: flex; gap: 3rem; flex-wrap: wrap;
+      margin-top: 4rem; padding-top: 2rem;
+      border-top: 1px solid var(--border);
+    }
+    .stat-item {}
+    .stat-num {
+      font-family: var(--font-display);
+      font-size: 2.2rem; font-weight: 900;
+      color: var(--accent-cyan);
+      line-height: 1;
+    }
+    .stat-label {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      margin-top: 0.3rem;
+    }
+
+    /* ===== THREAT TICKER ===== */
+    .ticker-wrap {
+      background: rgba(255,45,85,0.05);
+      border-top: 1px solid rgba(255,45,85,0.2);
+      border-bottom: 1px solid rgba(255,45,85,0.2);
+      padding: 0.6rem 0; overflow: hidden;
+    }
+    .ticker-label {
+      display: inline-flex; align-items: center; gap: 0.5rem;
+      font-family: var(--font-mono); font-size: 0.7rem;
+      color: var(--accent-red);
+      background: rgba(255,45,85,0.1);
+      padding: 0.2rem 0.8rem;
+      float: left; height: 100%;
+      letter-spacing: 1px;
+    }
+    .ticker-track {
+      display: flex; gap: 4rem;
+      animation: ticker 30s linear infinite;
+      white-space: nowrap;
+    }
+    .ticker-track span {
+      font-family: var(--font-mono); font-size: 0.75rem;
+      color: var(--text-secondary); letter-spacing: 1px;
+    }
+    .ticker-track span i { color: var(--accent-red); margin-right: 0.4rem; }
+    @keyframes ticker { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+
+    /* ===== CARDS ===== */
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 2rem;
+      transition: transform 0.3s, border-color 0.3s, box-shadow 0.3s;
+    }
+    .card:hover {
+      transform: translateY(-6px);
+      border-color: var(--border-bright);
+      box-shadow: var(--glow-cyan);
+    }
+
+    .card-icon {
+      width: 52px; height: 52px;
+      display: flex; align-items: center; justify-content: center;
+      border-radius: 10px;
+      font-size: 1.4rem;
+      margin-bottom: 1.2rem;
+    }
+    .icon-red    { background: rgba(255,45,85,0.12);  color: var(--accent-red);   }
+    .icon-cyan   { background: rgba(0,245,255,0.1);   color: var(--accent-cyan);  }
+    .icon-green  { background: rgba(0,255,136,0.1);   color: var(--accent-green); }
+    .icon-amber  { background: rgba(255,184,0,0.1);   color: var(--accent-amber); }
+
+    .card h3 {
+      font-family: var(--font-display);
+      font-size: 1.2rem; font-weight: 700;
+      margin-bottom: 0.6rem;
+      color: var(--text-primary);
+    }
+    .card p {
+      font-size: 0.95rem;
+      color: var(--text-secondary);
+      line-height: 1.6;
+    }
+
+    .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px,1fr)); gap: 1.5rem; }
+    .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px,1fr)); gap: 1.5rem; }
+    .grid-4 { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px,1fr)); gap: 1.5rem; }
+
+    /* ===== THREATS SECTION ===== */
+    #threats { background: var(--bg-secondary); }
+
+    .threat-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      transition: transform 0.3s, box-shadow 0.3s;
+    }
+    .threat-card:hover { transform: translateY(-6px); }
+
+    .threat-card-header {
+      padding: 1.5rem 1.5rem 0;
+      display: flex; align-items: center; gap: 1rem;
+    }
+    .threat-severity {
+      font-family: var(--font-mono); font-size: 0.65rem;
+      letter-spacing: 1.5px; text-transform: uppercase;
+      padding: 0.2rem 0.6rem; border-radius: 4px;
+      margin-left: auto;
+    }
+    .sev-critical { background: rgba(255,45,85,0.15); color: var(--accent-red); border: 1px solid rgba(255,45,85,0.3); }
+    .sev-high     { background: rgba(255,184,0,0.1);  color: var(--accent-amber);border: 1px solid rgba(255,184,0,0.3); }
+    .sev-medium   { background: rgba(0,245,255,0.08); color: var(--accent-cyan); border: 1px solid rgba(0,245,255,0.25); }
+
+    .threat-card-body { padding: 1rem 1.5rem 1.5rem; }
+    .threat-card-body h3 {
+      font-family: var(--font-display);
+      font-size: 1.15rem; font-weight: 700;
+      margin-bottom: 0.5rem;
+    }
+    .threat-card-body p {
+      font-size: 0.9rem; color: var(--text-secondary); line-height: 1.6;
+      margin-bottom: 1rem;
+    }
+    .threat-tags { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+    .tag {
+      font-family: var(--font-mono); font-size: 0.65rem;
+      color: var(--text-muted); letter-spacing: 1px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      padding: 0.2rem 0.6rem; border-radius: 4px;
+    }
+
+    /* ===== DETECTION METHODS ===== */
+    #detection {}
+
+    .timeline {
+      position: relative;
+      padding-left: 2rem;
+    }
+    .timeline::before {
+      content: '';
+      position: absolute; left: 0; top: 0; bottom: 0;
+      width: 2px;
+      background: linear-gradient(to bottom, var(--accent-cyan), var(--accent-green));
+      border-radius: 2px;
+    }
+    .timeline-item {
+      position: relative;
+      margin-bottom: 2.5rem;
+      padding-left: 1.5rem;
+    }
+    .timeline-item::before {
+      content: '';
+      position: absolute; left: -2.4rem; top: 0.4rem;
+      width: 12px; height: 12px;
+      border-radius: 50%;
+      background: var(--accent-cyan);
+      box-shadow: var(--glow-cyan);
+    }
+    .timeline-item h3 {
+      font-family: var(--font-display);
+      font-size: 1.15rem; font-weight: 700;
+      color: var(--accent-cyan);
+      margin-bottom: 0.4rem;
+    }
+    .timeline-item p { font-size: 0.95rem; color: var(--text-secondary); }
+
+    /* ===== DETECTION VISUAL ===== */
+    .detection-visual {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 2rem;
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+    }
+    .dv-row {
+      display: flex; align-items: center;
+      gap: 1rem; padding: 0.6rem 0;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+    }
+    .dv-row:last-child { border-bottom: none; }
+    .dv-label { color: var(--text-muted); width: 120px; flex-shrink: 0; }
+    .dv-bar-wrap { flex: 1; background: rgba(255,255,255,0.05); border-radius: 4px; height: 8px; overflow: hidden; }
+    .dv-bar {
+      height: 100%; border-radius: 4px;
+      background: linear-gradient(90deg, var(--accent-cyan), var(--accent-green));
+      animation: bar-grow 1.5s ease-out forwards;
+      transform-origin: left;
+    }
+    @keyframes bar-grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+    .dv-pct { color: var(--accent-cyan); width: 40px; text-align: right; }
+
+    /* ===== TOOLS ===== */
+    #tools { background: var(--bg-secondary); }
+
+    .tool-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.75rem;
+      display: flex; flex-direction: column;
+      gap: 1rem;
+      transition: transform 0.3s, border-color 0.3s, box-shadow 0.3s;
+    }
+    .tool-card:hover {
+      transform: translateY(-5px);
+      border-color: var(--border-bright);
+      box-shadow: 0 0 25px rgba(0,245,255,0.15);
+    }
+    .tool-card-top { display: flex; align-items: center; gap: 1rem; }
+    .tool-icon {
+      width: 48px; height: 48px; border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.3rem; flex-shrink: 0;
+    }
+    .tool-name {
+      font-family: var(--font-display);
+      font-size: 1.05rem; font-weight: 700;
+    }
+    .tool-type {
+      font-family: var(--font-mono); font-size: 0.65rem;
+      color: var(--text-muted); letter-spacing: 1.5px;
+      text-transform: uppercase;
+    }
+    .tool-desc { font-size: 0.9rem; color: var(--text-secondary); line-height: 1.6; }
+    .tool-features { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+    .feature-pill {
+      font-family: var(--font-mono); font-size: 0.65rem;
+      color: var(--accent-green);
+      background: rgba(0,255,136,0.08);
+      border: 1px solid rgba(0,255,136,0.2);
+      padding: 0.2rem 0.6rem; border-radius: 4px;
+    }
+
+    /* ===== EXAMPLES ===== */
+    #examples {}
+
+    .example-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-left: 4px solid var(--accent-red);
+      border-radius: 0 12px 12px 0;
+      padding: 2rem;
+      margin-bottom: 1.5rem;
+      transition: transform 0.3s;
+    }
+    .example-card:hover { transform: translateX(6px); }
+    .example-card.cyan  { border-left-color: var(--accent-cyan);  }
+    .example-card.green { border-left-color: var(--accent-green); }
+    .example-card.amber { border-left-color: var(--accent-amber); }
+
+    .example-meta {
+      display: flex; align-items: center; gap: 1rem;
+      flex-wrap: wrap; margin-bottom: 0.75rem;
+    }
+    .example-year {
+      font-family: var(--font-mono); font-size: 0.75rem;
+      color: var(--text-muted); letter-spacing: 1px;
+    }
+    .example-type {
+      font-family: var(--font-mono); font-size: 0.65rem;
+      padding: 0.2rem 0.6rem; border-radius: 4px;
+      letter-spacing: 1px; text-transform: uppercase;
+    }
+    .example-card h3 {
+      font-family: var(--font-display);
+      font-size: 1.2rem; font-weight: 700;
+      margin-bottom: 0.5rem;
+    }
+    .example-card p { font-size: 0.95rem; color: var(--text-secondary); line-height: 1.6; }
+    .example-impact {
+      margin-top: 1rem; padding: 0.75rem 1rem;
+      background: rgba(255,45,85,0.06);
+      border-radius: 6px;
+      font-size: 0.85rem; color: var(--text-secondary);
+    }
+    .example-impact strong { color: var(--accent-red); }
+
+    /* ===== PREVENTION ===== */
+    #prevention { background: var(--bg-secondary); }
+
+    .prevention-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 2rem;
+      display: flex; gap: 1.25rem;
+      transition: transform 0.3s, border-color 0.3s;
+    }
+    .prevention-card:hover {
+      transform: translateY(-4px);
+      border-color: rgba(0,255,136,0.4);
+    }
+    .prev-num {
+      font-family: var(--font-display);
+      font-size: 2.5rem; font-weight: 900;
+      color: rgba(0,245,255,0.1);
+      line-height: 1; flex-shrink: 0;
+      min-width: 48px;
+    }
+    .prev-content h3 {
+      font-family: var(--font-display);
+      font-size: 1.1rem; font-weight: 700;
+      margin-bottom: 0.4rem;
+      color: var(--accent-green);
+    }
+    .prev-content p { font-size: 0.9rem; color: var(--text-secondary); line-height: 1.6; }
+
+    /* ===== QUIZ ===== */
+    #quiz {}
+
+    .quiz-wrapper {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 2.5rem;
+      max-width: 760px;
+      margin: 0 auto;
+    }
+
+    .quiz-progress-wrap {
+      display: flex; align-items: center; gap: 1rem;
+      margin-bottom: 2rem;
+    }
+    .quiz-progress-bar {
+      flex: 1; height: 4px;
+      background: rgba(255,255,255,0.06); border-radius: 4px;
+      overflow: hidden;
+    }
+    .quiz-progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent-cyan), var(--accent-green));
+      border-radius: 4px;
+      transition: width 0.4s ease;
+    }
+    .quiz-progress-text {
+      font-family: var(--font-mono); font-size: 0.75rem;
+      color: var(--text-muted); white-space: nowrap;
+    }
+
+    .quiz-question {
+      font-family: var(--font-display);
+      font-size: 1.35rem; font-weight: 700;
+      color: var(--text-primary);
+      margin-bottom: 1.75rem; line-height: 1.4;
+    }
+
+    .quiz-options { display: flex; flex-direction: column; gap: 0.85rem; }
+
+    .quiz-option {
+      display: flex; align-items: center; gap: 1rem;
+      padding: 1rem 1.25rem;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 1rem; color: var(--text-secondary);
+      font-family: var(--font-body);
+      transition: border-color 0.2s, background 0.2s, color 0.2s;
+      text-align: left;
+      width: 100%;
+    }
+    .quiz-option:hover:not(:disabled) {
+      border-color: var(--border-bright);
+      background: rgba(0,245,255,0.05);
+      color: var(--text-primary);
+    }
+    .quiz-option .opt-letter {
+      font-family: var(--font-mono); font-size: 0.75rem;
+      width: 24px; height: 24px;
+      display: flex; align-items: center; justify-content: center;
+      border: 1px solid var(--border);
+      border-radius: 4px; flex-shrink: 0;
+      color: var(--text-muted);
+      transition: border-color 0.2s, color 0.2s, background 0.2s;
+    }
+    .quiz-option.correct {
+      border-color: var(--accent-green);
+      background: rgba(0,255,136,0.08);
+      color: var(--accent-green);
+    }
+    .quiz-option.correct .opt-letter {
+      border-color: var(--accent-green);
+      color: var(--accent-green);
+      background: rgba(0,255,136,0.15);
+    }
+    .quiz-option.wrong {
+      border-color: var(--accent-red);
+      background: rgba(255,45,85,0.08);
+      color: var(--accent-red);
+    }
+    .quiz-option.wrong .opt-letter {
+      border-color: var(--accent-red);
+      color: var(--accent-red);
+      background: rgba(255,45,85,0.15);
+    }
+    .quiz-option:disabled { cursor: not-allowed; }
+
+    .quiz-feedback {
+      margin-top: 1.25rem;
+      padding: 1rem 1.25rem;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      display: none;
+    }
+    .quiz-feedback.show { display: block; }
+    .quiz-feedback.correct-fb {
+      background: rgba(0,255,136,0.08);
+      border: 1px solid rgba(0,255,136,0.25);
+      color: var(--accent-green);
+    }
+    .quiz-feedback.wrong-fb {
+      background: rgba(255,45,85,0.08);
+      border: 1px solid rgba(255,45,85,0.25);
+      color: var(--accent-red);
+    }
+
+    .quiz-actions {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-top: 2rem;
+    }
+    .quiz-score-inline {
+      font-family: var(--font-mono); font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+    .quiz-score-inline span { color: var(--accent-cyan); }
+
+    /* Result screen */
+    .quiz-result {
+      text-align: center; display: none;
+    }
+    .quiz-result.show { display: block; }
+    .result-score-ring {
+      width: 160px; height: 160px;
+      border-radius: 50%;
+      margin: 0 auto 1.5rem;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      border: 4px solid var(--accent-cyan);
+      box-shadow: var(--glow-cyan), inset 0 0 30px rgba(0,245,255,0.05);
+    }
+    .result-score-num {
+      font-family: var(--font-display);
+      font-size: 3rem; font-weight: 900;
+      color: var(--accent-cyan);
+      line-height: 1;
+    }
+    .result-score-total {
+      font-family: var(--font-mono);
+      font-size: 0.75rem; color: var(--text-muted);
+    }
+    .result-label {
+      font-family: var(--font-display);
+      font-size: 1.8rem; font-weight: 700;
+      margin-bottom: 0.75rem;
+    }
+    .result-desc { font-size: 1rem; color: var(--text-secondary); margin-bottom: 2rem; }
+
+    /* ===== CONTACT ===== */
+    #about { background: var(--bg-secondary); }
+
+    .about-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 3rem; align-items: start;
+    }
+    @media (max-width: 768px) { .about-grid { grid-template-columns: 1fr; } }
+
+    .contact-form {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 2rem;
+    }
+    .form-group { margin-bottom: 1.25rem; }
+    .form-group label {
+      display: block;
+      font-family: var(--font-mono); font-size: 0.7rem;
+      color: var(--text-muted); letter-spacing: 2px;
+      text-transform: uppercase; margin-bottom: 0.5rem;
+    }
+    .form-group input,
+    .form-group textarea,
+    .form-group select {
+      width: 100%; padding: 0.8rem 1rem;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text-primary);
+      font-family: var(--font-body); font-size: 0.95rem;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      outline: none;
+    }
+    .form-group input:focus,
+    .form-group textarea:focus,
+    .form-group select:focus {
+      border-color: var(--border-bright);
+      box-shadow: 0 0 0 3px rgba(0,245,255,0.08);
+    }
+    .form-group textarea { resize: vertical; min-height: 110px; }
+    .form-group select option { background: var(--bg-card); }
+
+    .form-success {
+      display: none;
+      text-align: center; padding: 2rem;
+      color: var(--accent-green);
+      font-family: var(--font-display); font-size: 1.1rem;
+    }
+    .form-success i { font-size: 2.5rem; margin-bottom: 0.75rem; display: block; }
+    .form-success.show { display: block; }
+
+    .about-info h3 {
+      font-family: var(--font-display);
+      font-size: 1.5rem; font-weight: 700;
+      margin-bottom: 1rem; color: var(--accent-cyan);
+    }
+    .about-info p {
+      font-size: 1rem; color: var(--text-secondary);
+      line-height: 1.7; margin-bottom: 1rem;
+    }
+
+    .info-list { list-style: none; display: flex; flex-direction: column; gap: 0.75rem; margin-top: 1.5rem; }
+    .info-list li {
+      display: flex; align-items: center; gap: 0.75rem;
+      font-size: 0.95rem; color: var(--text-secondary);
+    }
+    .info-list li i { color: var(--accent-cyan); width: 20px; }
+
+    /* ===== FOOTER ===== */
+    footer {
+      background: var(--bg-primary);
+      border-top: 1px solid var(--border);
+      padding: 2rem;
+      text-align: center;
+    }
+    .footer-logo {
+      font-family: var(--font-display);
+      font-size: 1.5rem; font-weight: 900;
+      color: var(--accent-cyan);
+      letter-spacing: 3px;
+      margin-bottom: 0.75rem;
+    }
+    .footer-logo span { color: var(--accent-green); }
+    footer p {
+      font-size: 0.85rem; color: var(--text-muted);
+      font-family: var(--font-mono);
+    }
+    .footer-links {
+      display: flex; justify-content: center;
+      gap: 2rem; flex-wrap: wrap;
+      margin: 1rem 0;
+    }
+    .footer-links a {
+      font-size: 0.85rem; color: var(--text-muted);
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+    .footer-links a:hover { color: var(--accent-cyan); }
+
+    /* ===== SCROLL FADE IN ===== */
+    .fade-up {
+      opacity: 0;
+      transform: translateY(30px);
+      transition: opacity 0.6s ease, transform 0.6s ease;
+    }
+    .fade-up.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* ===== BACK TO TOP ===== */
+    #back-to-top {
+      position: fixed; bottom: 2rem; right: 2rem;
+      width: 44px; height: 44px;
+      background: var(--accent-cyan);
+      color: var(--bg-primary);
+      border: none; border-radius: 50%;
+      font-size: 1.1rem;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.3s, transform 0.3s;
+      z-index: 500;
+    }
+    #back-to-top.show { opacity: 1; pointer-events: all; }
+    #back-to-top:hover { transform: scale(1.1); }
+
+    /* ===== SECTION DIVIDER ===== */
+    .section-divider {
+      width: 60px; height: 3px;
+      background: linear-gradient(90deg, var(--accent-cyan), var(--accent-green));
+      border-radius: 2px; margin-bottom: 3rem;
+    }
+
+    /* ===== RESPONSIVE ===== */
+    @media (max-width: 900px) {
+      .nav-links { display: none; }
+      .nav-hamburger { display: flex; }
+      section { padding: 4rem 1.5rem; }
+    }
+    @media (max-width: 600px) {
+      section { padding: 3rem 1rem; }
+      .hero-stats { gap: 1.5rem; }
+      .quiz-wrapper { padding: 1.5rem; }
+      .about-grid { gap: 2rem; }
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- ===== LOADER ===== -->
+  <div id="loader">
+    <div class="loader-logo">NET<span style="color:var(--accent-green)">GUARD</span></div>
+    <div class="loader-bar"></div>
+    <div class="loader-text">INITIALIZING THREAT DATABASE...</div>
+  </div>
+
+  <!-- ===== NAVBAR ===== -->
+  <nav>
+    <a href="#home" class="nav-logo">NET<span>GUARD</span></a>
+    <ul class="nav-links">
+      <li><a href="#home">Home</a></li>
+      <li><a href="#threats">Threats</a></li>
+      <li><a href="#detection">Detection</a></li>
+      <li><a href="#tools">Tools</a></li>
+      <li><a href="#examples">Examples</a></li>
+      <li><a href="#prevention">Prevention</a></li>
+      <li><a href="#quiz">Quiz</a></li>
+      <li><a href="#about">About</a></li>
+    </ul>
+    <div class="nav-hamburger" id="hamburger" onclick="toggleMenu()">
+      <span></span><span></span><span></span>
+    </div>
+  </nav>
+
+  <!-- Mobile Nav -->
+  <div class="nav-mobile" id="mobileNav">
+    <a href="#home"       onclick="closeMobile()">Home</a>
+    <a href="#threats"    onclick="closeMobile()">Threats</a>
+    <a href="#detection"  onclick="closeMobile()">Detection</a>
+    <a href="#tools"      onclick="closeMobile()">Tools</a>
+    <a href="#examples"   onclick="closeMobile()">Examples</a>
+    <a href="#prevention" onclick="closeMobile()">Prevention</a>
+    <a href="#quiz"       onclick="closeMobile()">Quiz</a>
+    <a href="#about"      onclick="closeMobile()">About</a>
+  </div>
+
+  <!-- ===== HERO ===== -->
+  <section id="home">
+    <div class="hero-grid-bg"></div>
+    <div class="hero-glow hero-glow-1"></div>
+    <div class="hero-glow hero-glow-2"></div>
+    <div class="container hero-content">
+      <div class="hero-badge">
+        <span class="dot"></span>
+        LIVE THREAT MONITORING ACTIVE
+      </div>
+      <h1 class="hero-title">
+        <span class="line1">IDENTIFY &amp; NEUTRALIZE</span>
+        <span class="line2">NETWORK THREATS</span>
+      </h1>
+      <p class="hero-description">
+        A comprehensive guide to understanding, detecting, and defending against
+        cyber threats in modern computer networks. From malware to zero-day
+        exploits — stay ahead of the adversary.
+      </p>
+      <div class="hero-btns">
+        <a href="#threats" class="btn-primary">
+          <i class="fas fa-shield-halved"></i> Explore Threats
+        </a>
+        <a href="#quiz" class="btn-outline">
+          <i class="fas fa-brain"></i> Take the Quiz
+        </a>
+      </div>
+      <div class="hero-stats">
+        <div class="stat-item">
+          <div class="stat-num" id="counter1">0</div>
+          <div class="stat-label">Attacks / Day (Global)</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-num" id="counter2">0</div>
+          <div class="stat-label">Threat Vectors Covered</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-num" id="counter3">0</div>
+          <div class="stat-label">Detection Techniques</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-num" id="counter4">0</div>
+          <div class="stat-label">Security Tools Listed</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== TICKER ===== -->
+  <div class="ticker-wrap">
+    <div class="ticker-track" id="ticker">
+      <span><i class="fas fa-circle-exclamation"></i> ALERT: Ransomware campaign targeting healthcare — 2025</span>
+      <span><i class="fas fa-circle-exclamation"></i> DDoS attack peaks at 3.8 Tbps — Cloudflare mitigated</span>
+      <span><i class="fas fa-circle-exclamation"></i> Zero-day exploit in popular VPN software — patch available</span>
+      <span><i class="fas fa-circle-exclamation"></i> State-sponsored phishing targeting government emails</span>
+      <span><i class="fas fa-circle-exclamation"></i> Supply chain attack detected in npm packages</span>
+      <span><i class="fas fa-circle-exclamation"></i> ALERT: Ransomware campaign targeting healthcare — 2025</span>
+      <span><i class="fas fa-circle-exclamation"></i> DDoS attack peaks at 3.8 Tbps — Cloudflare mitigated</span>
+      <span><i class="fas fa-circle-exclamation"></i> Zero-day exploit in popular VPN software — patch available</span>
+      <span><i class="fas fa-circle-exclamation"></i> State-sponsored phishing targeting government emails</span>
+      <span><i class="fas fa-circle-exclamation"></i> Supply chain attack detected in npm packages</span>
+    </div>
+  </div>
+
+  <!-- ===== THREATS ===== -->
+  <section id="threats">
+    <div class="container">
+      <div class="fade-up">
+        <span class="section-tag"><i class="fas fa-bug"></i> &nbsp; Threat Landscape</span>
+        <h2 class="section-title">Types of <span class="highlight">Network Threats</span></h2>
+        <p class="section-subtitle">
+          Modern networks face a diverse array of attacks. Understanding each threat vector
+          is the first step in building an effective defense strategy.
+        </p>
+        <div class="section-divider"></div>
+      </div>
+
+      <div class="grid-3">
+        <!-- Malware -->
+        <div class="threat-card fade-up">
+          <div class="threat-card-header">
+            <div class="card-icon icon-red"><i class="fas fa-virus"></i></div>
+            <span class="threat-severity sev-critical">Critical</span>
+          </div>
+          <div class="threat-card-body">
+            <h3>Malware</h3>
+            <p>Malicious software designed to infiltrate, damage, or gain unauthorized access to systems. Includes viruses, worms, trojans, ransomware, spyware, and adware.</p>
+            <div class="threat-tags">
+              <span class="tag">ransomware</span>
+              <span class="tag">trojan</span>
+              <span class="tag">worm</span>
+              <span class="tag">spyware</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Phishing -->
+        <div class="threat-card fade-up">
+          <div class="threat-card-header">
+            <div class="card-icon icon-amber"><i class="fas fa-fish"></i></div>
+            <span class="threat-severity sev-high">High</span>
+          </div>
+          <div class="threat-card-body">
+            <h3>Phishing Attacks</h3>
+            <p>Deceptive attempts to steal sensitive information by impersonating trusted entities through fake emails, websites, or messages. Spear phishing targets specific individuals.</p>
+            <div class="threat-tags">
+              <span class="tag">spear-phishing</span>
+              <span class="tag">smishing</span>
+              <span class="tag">vishing</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- DDoS -->
+        <div class="threat-card fade-up">
+          <div class="threat-card-header">
+            <div class="card-icon icon-red"><i class="fas fa-network-wired"></i></div>
+            <span class="threat-severity sev-critical">Critical</span>
+          </div>
+          <div class="threat-card-body">
+            <h3>DDoS Attacks</h3>
+            <p>Distributed Denial-of-Service attacks overwhelm servers, networks, or services with traffic from multiple sources, rendering them unavailable to legitimate users.</p>
+            <div class="threat-tags">
+              <span class="tag">volumetric</span>
+              <span class="tag">protocol</span>
+              <span class="tag">application</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- MitM -->
+        <div class="threat-card fade-up">
+          <div class="threat-card-header">
+            <div class="card-icon icon-cyan"><i class="fas fa-user-secret"></i></div>
+            <span class="threat-severity sev-high">High</span>
+          </div>
+          <div class="threat-card-body">
+            <h3>Man-in-the-Middle</h3>
+            <p>Attackers secretly intercept and potentially alter communications between two parties who believe they are directly communicating. Commonly seen in unsecured Wi-Fi networks.</p>
+            <div class="threat-tags">
+              <span class="tag">eavesdropping</span>
+              <span class="tag">ARP spoofing</span>
+              <span class="tag">SSL stripping</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- SQL Injection -->
+        <div class="threat-card fade-up">
+          <div class="threat-card-header">
+            <div class="card-icon icon-amber"><i class="fas fa-database"></i></div>
+            <span class="threat-severity sev-high">High</span>
+          </div>
+          <div class="threat-card-body">
+            <h3>SQL Injection</h3>
+            <p>Malicious SQL code inserted into input fields to manipulate backend databases, allowing attackers to retrieve, modify, or delete data, and bypass authentication.</p>
+            <div class="threat-tags">
+              <span class="tag">blind SQLi</span>
+              <span class="tag">union-based</span>
+              <span class="tag">error-based</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Zero-Day -->
+        <div class="threat-card fade-up">
+          <div class="threat-card-header">
+            <div class="card-icon icon-red"><i class="fas fa-bomb"></i></div>
+            <span class="threat-severity sev-critical">Critical</span>
+          </div>
+          <div class="threat-card-body">
+            <h3>Zero-Day Exploits</h3>
+            <p>Attacks that exploit previously unknown vulnerabilities before developers can create and release patches. Often sold on dark web markets or used by nation-state actors.</p>
+            <div class="threat-tags">
+              <span class="tag">CVE</span>
+              <span class="tag">0day</span>
+              <span class="tag">APT</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Insider Threats -->
+        <div class="threat-card fade-up">
+          <div class="threat-card-header">
+            <div class="card-icon icon-amber"><i class="fas fa-user-slash"></i></div>
+            <span class="threat-severity sev-medium">Medium</span>
+          </div>
+          <div class="threat-card-body">
+            <h3>Insider Threats</h3>
+            <p>Security risks originating from within the organization — malicious employees, contractors, or compromised accounts that misuse legitimate access to harm the organization.</p>
+            <div class="threat-tags">
+              <span class="tag">data exfiltration</span>
+              <span class="tag">sabotage</span>
+              <span class="tag">privilege abuse</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Ransomware -->
+        <div class="threat-card fade-up">
+          <div class="threat-card-header">
+            <div class="card-icon icon-red"><i class="fas fa-lock"></i></div>
+            <span class="threat-severity sev-critical">Critical</span>
+          </div>
+          <div class="threat-card-body">
+            <h3>Ransomware</h3>
+            <p>A form of malware that encrypts victims' data and demands ransom payments for decryption. Modern variants use double-extortion, threatening to publish stolen data.</p>
+            <div class="threat-tags">
+              <span class="tag">encryption</span>
+              <span class="tag">C2 server</span>
+              <span class="tag">cryptocurrency</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- DNS Spoofing -->
+        <div class="threat-card fade-up">
+          <div class="threat-card-header">
+            <div class="card-icon icon-cyan"><i class="fas fa-globe"></i></div>
+            <span class="threat-severity sev-medium">Medium</span>
+          </div>
+          <div class="threat-card-body">
+            <h3>DNS Spoofing</h3>
+            <p>Corrupting DNS cache to redirect users from legitimate websites to fraudulent ones without their knowledge, enabling credential theft and malware delivery.</p>
+            <div class="threat-tags">
+              <span class="tag">cache poisoning</span>
+              <span class="tag">hijacking</span>
+              <span class="tag">DNSSEC</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== DETECTION METHODS ===== -->
+  <section id="detection">
+    <div class="container">
+      <div class="fade-up">
+        <span class="section-tag"><i class="fas fa-radar"></i> &nbsp; Detection</span>
+        <h2 class="section-title">Threat <span class="highlight">Detection Methods</span></h2>
+        <p class="section-subtitle">
+          Effective threat detection combines multiple methodologies to identify
+          suspicious activity at every layer of the network stack.
+        </p>
+        <div class="section-divider"></div>
+      </div>
+
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:3rem; align-items:start;">
+        <div class="fade-up">
+          <div class="timeline">
+            <div class="timeline-item">
+              <h3>Signature-Based Detection</h3>
+              <p>Compares network traffic and files against a database of known threat signatures. Highly effective against known malware but struggles with new, unknown threats. Requires constant signature updates.</p>
+            </div>
+            <div class="timeline-item">
+              <h3>Anomaly-Based Detection</h3>
+              <p>Establishes a baseline of normal behavior and flags deviations. Machine learning models analyze traffic patterns to detect unusual activity that could indicate a breach.</p>
+            </div>
+            <div class="timeline-item">
+              <h3>Behavioral Analysis</h3>
+              <p>Monitors system and user behavior over time. Detects lateral movement, privilege escalation, and data exfiltration by comparing current actions against learned behavioral profiles.</p>
+            </div>
+            <div class="timeline-item">
+              <h3>Heuristic Analysis</h3>
+              <p>Uses rules and algorithms to identify suspicious characteristics in code or traffic, without relying on known signatures. Particularly useful for detecting polymorphic malware.</p>
+            </div>
+            <div class="timeline-item">
+              <h3>Threat Intelligence Feeds</h3>
+              <p>Incorporates real-time data from global threat intelligence networks. Provides context about threat actors, TTPs (tactics, techniques, procedures), and IOCs (indicators of compromise).</p>
+            </div>
+            <div class="timeline-item">
+              <h3>Deep Packet Inspection (DPI)</h3>
+              <p>Examines the data part of packets at the application layer. Identifies malicious payloads, protocol anomalies, and unauthorized application usage hidden within normal-looking traffic.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="fade-up" style="display:flex; flex-direction:column; gap:1.5rem;">
+          <div class="detection-visual">
+            <div style="font-family:var(--font-mono); font-size:0.7rem; color:var(--text-muted); letter-spacing:2px; margin-bottom:1.25rem;">DETECTION ACCURACY BY METHOD</div>
+            <div class="dv-row">
+              <div class="dv-label">Signature</div>
+              <div class="dv-bar-wrap"><div class="dv-bar" style="width:94%"></div></div>
+              <div class="dv-pct">94%</div>
+            </div>
+            <div class="dv-row">
+              <div class="dv-label">Anomaly</div>
+              <div class="dv-bar-wrap"><div class="dv-bar" style="width:82%"></div></div>
+              <div class="dv-pct">82%</div>
+            </div>
+            <div class="dv-row">
+              <div class="dv-label">Behavioral</div>
+              <div class="dv-bar-wrap"><div class="dv-bar" style="width:78%"></div></div>
+              <div class="dv-pct">78%</div>
+            </div>
+            <div class="dv-row">
+              <div class="dv-label">Heuristic</div>
+              <div class="dv-bar-wrap"><div class="dv-bar" style="width:71%"></div></div>
+              <div class="dv-pct">71%</div>
+            </div>
+            <div class="dv-row">
+              <div class="dv-label">Threat Intel</div>
+              <div class="dv-bar-wrap"><div class="dv-bar" style="width:88%"></div></div>
+              <div class="dv-pct">88%</div>
+            </div>
+            <div class="dv-row">
+              <div class="dv-label">DPI</div>
+              <div class="dv-bar-wrap"><div class="dv-bar" style="width:85%"></div></div>
+              <div class="dv-pct">85%</div>
+            </div>
+          </div>
+
+          <!-- Mini info cards -->
+          <div class="card" style="background:var(--bg-card);">
+            <div class="card-icon icon-cyan"><i class="fas fa-robot"></i></div>
+            <h3>AI-Powered Detection</h3>
+            <p>Modern SIEM systems leverage machine learning for real-time anomaly detection, dramatically reducing mean-time-to-detect (MTTD) from days to minutes.</p>
+          </div>
+          <div class="card" style="background:var(--bg-card);">
+            <div class="card-icon icon-green"><i class="fas fa-layer-group"></i></div>
+            <h3>Defense in Depth</h3>
+            <p>No single detection method is foolproof. Layering multiple detection techniques ensures threats missed by one method are caught by another.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== TOOLS ===== -->
+  <section id="tools">
+    <div class="container">
+      <div class="fade-up">
+        <span class="section-tag"><i class="fas fa-wrench"></i> &nbsp; Security Arsenal</span>
+        <h2 class="section-title">Tools for <span class="highlight">Threat Identification</span></h2>
+        <p class="section-subtitle">
+          Security professionals rely on a diverse toolkit to monitor, detect, and respond
+          to threats across the entire network infrastructure.
+        </p>
+        <div class="section-divider"></div>
+      </div>
+
+      <div class="grid-3 fade-up">
+        <div class="tool-card">
+          <div class="tool-card-top">
+            <div class="tool-icon icon-red"><i class="fas fa-eye"></i></div>
+            <div>
+              <div class="tool-name">Intrusion Detection System</div>
+              <div class="tool-type">IDS · Monitoring</div>
+            </div>
+          </div>
+          <div class="tool-desc">Monitors network traffic for suspicious activity and known threats. Generates alerts when potential intrusions are detected. Operates in passive mode — no blocking.</div>
+          <div class="tool-features">
+            <span class="feature-pill">Snort</span>
+            <span class="feature-pill">Suricata</span>
+            <span class="feature-pill">OSSEC</span>
+          </div>
+        </div>
+
+        <div class="tool-card">
+          <div class="tool-card-top">
+            <div class="tool-icon icon-cyan"><i class="fas fa-shield-halved"></i></div>
+            <div>
+              <div class="tool-name">Intrusion Prevention System</div>
+              <div class="tool-type">IPS · Active Defense</div>
+            </div>
+          </div>
+          <div class="tool-desc">Actively monitors and takes real-time actions to block or prevent intrusions. Sits inline with network traffic to stop malicious packets before they reach targets.</div>
+          <div class="tool-features">
+            <span class="feature-pill">Snort IPS</span>
+            <span class="feature-pill">Fail2ban</span>
+            <span class="feature-pill">Tipping Point</span>
+          </div>
+        </div>
+
+        <div class="tool-card">
+          <div class="tool-card-top">
+            <div class="tool-icon icon-amber"><i class="fas fa-fire-flame-curved"></i></div>
+            <div>
+              <div class="tool-name">Next-Gen Firewall</div>
+              <div class="tool-type">NGFW · Perimeter</div>
+            </div>
+          </div>
+          <div class="tool-desc">Goes beyond port/protocol inspection with application awareness, deep packet inspection, SSL decryption, and integrated threat intelligence for comprehensive perimeter defense.</div>
+          <div class="tool-features">
+            <span class="feature-pill">Palo Alto</span>
+            <span class="feature-pill">Fortinet</span>
+            <span class="feature-pill">pfSense</span>
+          </div>
+        </div>
+
+        <div class="tool-card">
+          <div class="tool-card-top">
+            <div class="tool-icon icon-green"><i class="fas fa-chart-line"></i></div>
+            <div>
+              <div class="tool-name">SIEM Platform</div>
+              <div class="tool-type">SIEM · Correlation</div>
+            </div>
+          </div>
+          <div class="tool-desc">Security Information and Event Management collects, correlates, and analyzes log data from across the infrastructure to detect complex, multi-stage attacks.</div>
+          <div class="tool-features">
+            <span class="feature-pill">Splunk</span>
+            <span class="feature-pill">IBM QRadar</span>
+            <span class="feature-pill">Elastic SIEM</span>
+          </div>
+        </div>
+
+        <div class="tool-card">
+          <div class="tool-card-top">
+            <div class="tool-icon icon-cyan"><i class="fas fa-search"></i></div>
+            <div>
+              <div class="tool-name">Network Scanners</div>
+              <div class="tool-type">Recon · Vulnerability</div>
+            </div>
+          </div>
+          <div class="tool-desc">Proactively discover open ports, running services, and vulnerabilities across all networked devices before attackers do. Essential for attack surface management.</div>
+          <div class="tool-features">
+            <span class="feature-pill">Nmap</span>
+            <span class="feature-pill">Nessus</span>
+            <span class="feature-pill">OpenVAS</span>
+          </div>
+        </div>
+
+        <div class="tool-card">
+          <div class="tool-card-top">
+            <div class="tool-icon icon-red"><i class="fas fa-microscope"></i></div>
+            <div>
+              <div class="tool-name">Packet Analyzers</div>
+              <div class="tool-type">Forensics · Analysis</div>
+            </div>
+          </div>
+          <div class="tool-desc">Capture and dissect network packets to understand exactly what data is traversing the network. Crucial for incident response and forensic investigation.</div>
+          <div class="tool-features">
+            <span class="feature-pill">Wireshark</span>
+            <span class="feature-pill">tcpdump</span>
+            <span class="feature-pill">Zeek</span>
+          </div>
+        </div>
+
+        <div class="tool-card">
+          <div class="tool-card-top">
+            <div class="tool-icon icon-amber"><i class="fas fa-flask"></i></div>
+            <div>
+              <div class="tool-name">Sandboxing</div>
+              <div class="tool-type">Analysis · Isolation</div>
+            </div>
+          </div>
+          <div class="tool-desc">Execute suspicious files or URLs in isolated, instrumented environments to observe behavior without risk. Identify malware families and extract indicators of compromise.</div>
+          <div class="tool-features">
+            <span class="feature-pill">Cuckoo</span>
+            <span class="feature-pill">ANY.RUN</span>
+            <span class="feature-pill">Joe Sandbox</span>
+          </div>
+        </div>
+
+        <div class="tool-card">
+          <div class="tool-card-top">
+            <div class="tool-icon icon-green"><i class="fas fa-terminal"></i></div>
+            <div>
+              <div class="tool-name">Pen Testing Frameworks</div>
+              <div class="tool-type">Offensive · Red Team</div>
+            </div>
+          </div>
+          <div class="tool-desc">Simulate attacker techniques to proactively identify weaknesses before malicious actors do. Validate security controls and uncover hidden vulnerabilities.</div>
+          <div class="tool-features">
+            <span class="feature-pill">Metasploit</span>
+            <span class="feature-pill">Burp Suite</span>
+            <span class="feature-pill">Kali Linux</span>
+          </div>
+        </div>
+
+        <div class="tool-card">
+          <div class="tool-card-top">
+            <div class="tool-icon icon-cyan"><i class="fas fa-cloud-shield-check" style="font-size:1rem"></i></div>
+            <div>
+              <div class="tool-name">EDR Solutions</div>
+              <div class="tool-type">Endpoint · Response</div>
+            </div>
+          </div>
+          <div class="tool-desc">Endpoint Detection and Response continuously monitors endpoint activity, records telemetry, detects threats, and enables rapid containment and investigation.</div>
+          <div class="tool-features">
+            <span class="feature-pill">CrowdStrike</span>
+            <span class="feature-pill">SentinelOne</span>
+            <span class="feature-pill">Carbon Black</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== REAL-WORLD EXAMPLES ===== -->
+  <section id="examples">
+    <div class="container">
+      <div class="fade-up">
+        <span class="section-tag"><i class="fas fa-history"></i> &nbsp; Case Studies</span>
+        <h2 class="section-title">Real-World <span class="highlight">Attack Examples</span></h2>
+        <p class="section-subtitle">
+          Studying historical breaches reveals attack patterns, defensive failures,
+          and lessons that shape modern cybersecurity practices.
+        </p>
+        <div class="section-divider"></div>
+      </div>
+
+      <div class="fade-up">
+        <div class="example-card">
+          <div class="example-meta">
+            <span class="example-year">MAY 2017</span>
+            <span class="example-type sev-critical">Ransomware</span>
+          </div>
+          <h3>WannaCry Global Ransomware Attack</h3>
+          <p>Exploited the EternalBlue SMB vulnerability (leaked from the NSA) to spread autonomously across networks without user interaction. Infected over 200,000 systems across 150 countries within 24 hours, crippling hospitals, banks, and telecoms.</p>
+          <div class="example-impact">
+            <strong>Impact:</strong> ~$4 billion in damages | UK's NHS severely disrupted | Stopped by a "kill switch" domain registration | Linked to North Korea's Lazarus Group
+          </div>
+        </div>
+
+        <div class="example-card cyan">
+          <div class="example-meta">
+            <span class="example-year">DEC 2020</span>
+            <span class="example-type sev-medium">Supply Chain</span>
+          </div>
+          <h3>SolarWinds Orion Supply Chain Attack</h3>
+          <p>Nation-state attackers (APT29/Cozy Bear) compromised SolarWinds' build pipeline, injecting malicious code (SUNBURST) into legitimate software updates. The trojanized update was distributed to ~18,000 organizations including US government agencies.</p>
+          <div class="example-impact">
+            <strong>Impact:</strong> 9 US federal agencies breached | Months of undetected access | Considered one of the most sophisticated attacks in history | Led to major supply chain security reforms
+          </div>
+        </div>
+
+        <div class="example-card amber">
+          <div class="example-meta">
+            <span class="example-year">MAY 2021</span>
+            <span class="example-type sev-critical">Ransomware</span>
+          </div>
+          <h3>Colonial Pipeline Ransomware (DarkSide)</h3>
+          <p>DarkSide ransomware encrypted Colonial Pipeline's IT systems, forcing the company to shut down its OT pipeline operations as a precaution. The pipeline supplies 45% of the US East Coast's fuel, causing panic buying and fuel shortages.</p>
+          <div class="example-impact">
+            <strong>Impact:</strong> $4.4M ransom paid (partially recovered) | 6-day shutdown | Fuel shortage in 17 states | US declared state of emergency | Entry point: compromised VPN password
+          </div>
+        </div>
+
+        <div class="example-card green">
+          <div class="example-meta">
+            <span class="example-year">OCT 2016</span>
+            <span class="example-type sev-critical">DDoS / Botnet</span>
+          </div>
+          <h3>Mirai Botnet DDoS Attack on Dyn DNS</h3>
+          <p>The Mirai botnet — comprising hundreds of thousands of compromised IoT devices (cameras, routers) — launched a massive DDoS attack against Dyn, a major DNS provider. This took down major websites including Twitter, Reddit, Netflix, and GitHub for hours.</p>
+          <div class="example-impact">
+            <strong>Impact:</strong> ~1.2 Tbps peak traffic | Major internet disruption on US East Coast | Exposed IoT security vulnerabilities | Led to new IoT security regulations
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== PREVENTION ===== -->
+  <section id="prevention">
+    <div class="container">
+      <div class="fade-up">
+        <span class="section-tag"><i class="fas fa-shield"></i> &nbsp; Defense Strategies</span>
+        <h2 class="section-title">Prevention <span class="highlight">Techniques</span></h2>
+        <p class="section-subtitle">
+          Proactive defense is far more effective than reactive response.
+          Implement these techniques to build a resilient security posture.
+        </p>
+        <div class="section-divider"></div>
+      </div>
+
+      <div class="grid-2 fade-up">
+        <div class="prevention-card">
+          <div class="prev-num">01</div>
+          <div class="prev-content">
+            <h3>Zero Trust Architecture</h3>
+            <p>Never trust, always verify. Eliminate implicit trust and continuously validate every user, device, and connection — even within the network perimeter. Enforce least-privilege access for all resources.</p>
+          </div>
+        </div>
+
+        <div class="prevention-card">
+          <div class="prev-num">02</div>
+          <div class="prev-content">
+            <h3>Multi-Factor Authentication (MFA)</h3>
+            <p>Require two or more verification factors before granting access. MFA blocks over 99.9% of account compromise attacks. Prefer authenticator apps or hardware tokens over SMS-based MFA.</p>
+          </div>
+        </div>
+
+        <div class="prevention-card">
+          <div class="prev-num">03</div>
+          <div class="prev-content">
+            <h3>Regular Patch Management</h3>
+            <p>Maintain a systematic process for applying security patches to all systems, software, and firmware promptly. Most breaches exploit known vulnerabilities for which patches already exist.</p>
+          </div>
+        </div>
+
+        <div class="prevention-card">
+          <div class="prev-num">04</div>
+          <div class="prev-content">
+            <h3>Network Segmentation</h3>
+            <p>Divide the network into isolated segments to contain breaches and limit lateral movement. Implement VLANs, micro-segmentation, and strict inter-segment access controls to reduce blast radius.</p>
+          </div>
+        </div>
+
+        <div class="prevention-card">
+          <div class="prev-num">05</div>
+          <div class="prev-content">
+            <h3>Employee Security Training</h3>
+            <p>The human element remains the weakest link. Regular phishing simulations, security awareness training, and clear incident reporting procedures dramatically reduce social engineering success rates.</p>
+          </div>
+        </div>
+
+        <div class="prevention-card">
+          <div class="prev-num">06</div>
+          <div class="prev-content">
+            <h3>Encryption at All Levels</h3>
+            <p>Encrypt data in transit (TLS 1.3+), at rest (AES-256), and in use where possible. Implement certificate pinning, enforce HSTS, and regularly audit cryptographic implementations for weaknesses.</p>
+          </div>
+        </div>
+
+        <div class="prevention-card">
+          <div class="prev-num">07</div>
+          <div class="prev-content">
+            <h3>Backup &amp; Disaster Recovery</h3>
+            <p>Follow the 3-2-1 rule: 3 copies of data, on 2 different media types, with 1 offsite copy. Test restoration procedures regularly. Immutable backups are critical for ransomware resilience.</p>
+          </div>
+        </div>
+
+        <div class="prevention-card">
+          <div class="prev-num">08</div>
+          <div class="prev-content">
+            <h3>Incident Response Planning</h3>
+            <p>Develop, document, and regularly test an Incident Response Plan (IRP). Define clear roles, communication channels, and containment procedures so teams can respond swiftly when breaches occur.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== QUIZ ===== -->
+  <section id="quiz">
+    <div class="container">
+      <div class="fade-up" style="text-align:center; margin-bottom:3rem;">
+        <span class="section-tag"><i class="fas fa-brain"></i> &nbsp; Test Your Knowledge</span>
+        <h2 class="section-title">Cybersecurity <span class="highlight">Challenge Quiz</span></h2>
+        <p class="section-subtitle" style="margin:0 auto;">
+          Put your threat identification knowledge to the test. 10 questions covering
+          attack types, tools, and defense strategies.
+        </p>
+      </div>
+
+      <div class="quiz-wrapper fade-up">
+        <!-- Quiz progress -->
+        <div class="quiz-progress-wrap" id="quizProgress">
+          <div class="quiz-progress-bar">
+            <div class="quiz-progress-fill" id="progressFill" style="width:10%"></div>
+          </div>
+          <div class="quiz-progress-text" id="progressText">1 / 10</div>
+        </div>
+
+        <!-- Question display -->
+        <div id="quizGame">
+          <div class="quiz-question" id="questionText"></div>
+          <div class="quiz-options" id="optionsContainer"></div>
+          <div class="quiz-feedback" id="quizFeedback"></div>
+          <div class="quiz-actions">
+            <div class="quiz-score-inline">Score: <span id="liveScore">0</span> / <span id="liveTotal">10</span></div>
+            <button class="btn-primary" id="nextBtn" onclick="nextQuestion()" style="display:none;">
+              Next Question <i class="fas fa-arrow-right"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Result screen -->
+        <div class="quiz-result" id="quizResult">
+          <div class="result-score-ring">
+            <div class="result-score-num" id="finalScore">0</div>
+            <div class="result-score-total" id="finalTotal">/ 10</div>
+          </div>
+          <div class="result-label" id="resultLabel">—</div>
+          <p class="result-desc" id="resultDesc">—</p>
+          <button class="btn-primary" onclick="resetQuiz()">
+            <i class="fas fa-rotate"></i> Retake Quiz
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== ABOUT / CONTACT ===== -->
+  <section id="about">
+    <div class="container">
+      <div class="fade-up">
+        <span class="section-tag"><i class="fas fa-envelope"></i> &nbsp; Connect</span>
+        <h2 class="section-title">About &amp; <span class="highlight">Contact</span></h2>
+        <div class="section-divider"></div>
+      </div>
+
+      <div class="about-grid fade-up">
+        <div class="about-info">
+          <h3>About NetGuard</h3>
+          <p>NetGuard is an educational cybersecurity resource dedicated to helping network administrators, security professionals, students, and organizations understand and combat the evolving threat landscape.</p>
+          <p>Our mission is to make advanced threat identification knowledge accessible to everyone — from beginners learning the fundamentals to seasoned professionals staying current with emerging attack vectors.</p>
+          <p>All content is regularly reviewed and updated to reflect the latest threat intelligence, industry best practices, and regulatory requirements.</p>
+
+          <ul class="info-list">
+            <li><i class="fas fa-envelope"></i> contact@netguard-security.edu</li>
+            <li><i class="fas fa-shield-halved"></i> Cybersecurity Education Resource</li>
+            <li><i class="fas fa-globe"></i> Available Worldwide</li>
+            <li><i class="fas fa-graduation-cap"></i> Free for Students &amp; Researchers</li>
+            <li><i class="fab fa-github"></i> Open Source Contributions Welcome</li>
+          </ul>
+        </div>
+
+        <div class="contact-form">
+          <h3 style="font-family:var(--font-display); font-size:1.3rem; font-weight:700; margin-bottom:1.5rem; color:var(--accent-cyan);">Send a Message</h3>
+          <div id="formFields">
+            <div class="form-group">
+              <label>Your Name</label>
+              <input type="text" id="contactName" placeholder="Jane Smith"/>
+            </div>
+            <div class="form-group">
+              <label>Email Address</label>
+              <input type="email" id="contactEmail" placeholder="jane@example.com"/>
+            </div>
+            <div class="form-group">
+              <label>Topic</label>
+              <select id="contactTopic">
+                <option value="">Select a topic...</option>
+                <option>General Inquiry</option>
+                <option>Report a Vulnerability</option>
+                <option>Content Feedback</option>
+                <option>Partnership</option>
+                <option>Educational Use</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Message</label>
+              <textarea id="contactMessage" placeholder="Describe your question or feedback..."></textarea>
+            </div>
+            <button class="btn-primary" onclick="submitForm()" style="width:100%; justify-content:center;">
+              <i class="fas fa-paper-plane"></i> Send Message
+            </button>
+          </div>
+          <div class="form-success" id="formSuccess">
+            <i class="fas fa-circle-check"></i>
+            Message sent successfully!<br>
+            <span style="font-size:0.9rem; color:var(--text-muted); font-family:var(--font-mono);">We'll respond within 48 hours.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== FOOTER ===== -->
+  <footer>
+    <div class="footer-logo">NET<span>GUARD</span></div>
+    <div class="footer-links">
+      <a href="#home">Home</a>
+      <a href="#threats">Threats</a>
+      <a href="#detection">Detection</a>
+      <a href="#tools">Tools</a>
+      <a href="#prevention">Prevention</a>
+      <a href="#quiz">Quiz</a>
+    </div>
+    <p>© 2025 NetGuard · Educational Resource on Network Threat Identification · All rights reserved</p>
+    <p style="margin-top:0.5rem; color:rgba(74,106,133,0.6);">Built for educational purposes only. Content does not constitute professional security advice.</p>
+  </footer>
+
+  <!-- Back to top -->
+  <button id="back-to-top" onclick="window.scrollTo({top:0,behavior:'smooth'})">
+    <i class="fas fa-chevron-up"></i>
+  </button>
+
+  <!-- ===== JAVASCRIPT ===== -->
+  <script>
+    /* ==============================
+       LOADER
+    ============================== */
+    window.addEventListener('load', () => {
+      setTimeout(() => {
+        document.getElementById('loader').classList.add('hidden');
+        // Animate hero counters after loader
+        animateCounter('counter1', 2200000, 'M+', 2000, 2200000);
+        animateCounter('counter2', 24, '', 1500, 24);
+        animateCounter('counter3', 12, '', 1500, 12);
+        animateCounter('counter4', 27, '', 1500, 27);
+      }, 1800);
+    });
+
+    /* ==============================
+       COUNTER ANIMATION
+    ============================== */
+    function animateCounter(id, target, suffix, duration, rawTarget) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      let start = 0;
+      const step = rawTarget / (duration / 16);
+      const formatNum = n => {
+        if (rawTarget >= 1000000) return Math.floor(n / 1000000) + 'M+';
+        return Math.floor(n) + suffix;
+      };
+      const tick = () => {
+        start = Math.min(start + step, rawTarget);
+        el.textContent = formatNum(start);
+        if (start < rawTarget) requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    }
+
+    /* ==============================
+       NAVBAR & MOBILE MENU
+    ============================== */
+    function toggleMenu() {
+      document.getElementById('hamburger').classList.toggle('open');
+      document.getElementById('mobileNav').classList.toggle('open');
+    }
+    function closeMobile() {
+      document.getElementById('hamburger').classList.remove('open');
+      document.getElementById('mobileNav').classList.remove('open');
+    }
+
+    /* ==============================
+       SCROLL EFFECTS
+    ============================== */
+    const backToTop = document.getElementById('back-to-top');
+
+    window.addEventListener('scroll', () => {
+      // Back to top button
+      backToTop.classList.toggle('show', window.scrollY > 500);
+    });
+
+    // Intersection observer for fade-up animations
+    const fadeEls = document.querySelectorAll('.fade-up');
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry, i) => {
+        if (entry.isIntersecting) {
+          setTimeout(() => entry.target.classList.add('visible'), i * 80);
+        }
+      });
+    }, { threshold: 0.1 });
+    fadeEls.forEach(el => observer.observe(el));
+
+    /* ==============================
+       CONTACT FORM
+    ============================== */
+    function submitForm() {
+      const name    = document.getElementById('contactName').value.trim();
+      const email   = document.getElementById('contactEmail').value.trim();
+      const topic   = document.getElementById('contactTopic').value;
+      const message = document.getElementById('contactMessage').value.trim();
+
+      if (!name || !email || !topic || !message) {
+        alert('Please fill in all fields before submitting.');
+        return;
+      }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        alert('Please enter a valid email address.');
+        return;
+      }
+      document.getElementById('formFields').style.display = 'none';
+      document.getElementById('formSuccess').classList.add('show');
+    }
+
+    /* ==============================
+       QUIZ ENGINE
+    ============================== */
+    const quizQuestions = [
+      {
+        q: "What type of attack involves flooding a server with traffic from multiple sources to make it unavailable?",
+        opts: ["Man-in-the-Middle", "SQL Injection", "Distributed Denial of Service (DDoS)", "Phishing"],
+        correct: 2,
+        explanation: "DDoS (Distributed Denial of Service) attacks use multiple compromised systems to overwhelm a target with traffic, rendering it unavailable to legitimate users."
+      },
+      {
+        q: "Which NSA-leaked exploit was used by the WannaCry ransomware to spread across networks?",
+        opts: ["BlueKeep", "EternalBlue", "ShellShock", "Heartbleed"],
+        correct: 1,
+        explanation: "WannaCry exploited EternalBlue, an SMB vulnerability tool leaked from the NSA, allowing it to spread autonomously across networks without user interaction."
+      },
+      {
+        q: "A security tool that monitors network traffic and generates alerts but does NOT block threats is called a(n)?",
+        opts: ["Firewall", "IPS (Intrusion Prevention System)", "IDS (Intrusion Detection System)", "SIEM"],
+        correct: 2,
+        explanation: "An IDS (Intrusion Detection System) passively monitors and alerts on suspicious activity. Unlike an IPS, it does not actively block threats."
+      },
+      {
+        q: "What is the primary goal of a 'Man-in-the-Middle' (MitM) attack?",
+        opts: ["Encrypt all network traffic", "Intercept and potentially alter communication between two parties", "Overload servers with requests", "Inject malicious SQL commands"],
+        correct: 1,
+        explanation: "In a MitM attack, the attacker secretly positions themselves between two communicating parties to intercept, read, or modify the data being exchanged."
+      },
+      {
+        q: "Which of the following BEST describes 'Zero Trust' security architecture?",
+        opts: ["Trust all internal network traffic by default", "Trust no one — always verify every user and device", "Only verify external connections", "Disable all user authentication for faster access"],
+        correct: 1,
+        explanation: "Zero Trust operates on the principle of 'never trust, always verify.' No user, device, or connection is trusted by default, even inside the network perimeter."
+      },
+      {
+        q: "What attack involves corrupting the DNS cache to redirect users to malicious websites?",
+        opts: ["ARP Spoofing", "SSL Stripping", "DNS Cache Poisoning", "Phishing"],
+        correct: 2,
+        explanation: "DNS Cache Poisoning (or DNS Spoofing) involves corrupting a DNS resolver's cache with false entries to redirect users to attacker-controlled IP addresses."
+      },
+      {
+        q: "The 3-2-1 backup rule states you should have 3 copies of data on 2 different media, with...",
+        opts: ["1 copy encrypted", "1 copy offsite", "1 copy on the cloud", "1 copy on tape"],
+        correct: 1,
+        explanation: "The 3-2-1 rule: 3 total copies, on 2 different media types, with at least 1 copy stored offsite to protect against local disasters like fires or ransomware."
+      },
+      {
+        q: "Which attack type specifically involves injecting malicious code into application input fields to manipulate a backend database?",
+        opts: ["Cross-Site Scripting (XSS)", "Buffer Overflow", "SQL Injection", "CSRF Attack"],
+        correct: 2,
+        explanation: "SQL Injection involves inserting malicious SQL statements into input fields to manipulate the backend database — allowing data theft, authentication bypass, or data deletion."
+      },
+      {
+        q: "What is a 'Zero-Day' exploit?",
+        opts: ["An exploit that only works for 24 hours", "An attack on day zero of a product launch", "An exploit targeting an unknown vulnerability with no available patch", "A type of DDoS attack lasting zero seconds"],
+        correct: 2,
+        explanation: "A Zero-Day exploit targets a software vulnerability that is unknown to the vendor. Because no patch exists yet, defenders have 'zero days' to protect against it before it's used."
+      },
+      {
+        q: "Which tool would a security analyst use to capture and analyze network packet data in real-time?",
+        opts: ["Metasploit", "Wireshark", "Nessus", "Splunk"],
+        correct: 1,
+        explanation: "Wireshark is the industry-standard network packet analyzer. It captures live network traffic and allows analysts to examine each packet in detail for forensic investigation."
+      }
+    ];
+
+    let currentQ = 0;
+    let score    = 0;
+    let answered = false;
+
+    function loadQuestion() {
+      if (currentQ >= quizQuestions.length) { showResults(); return; }
+
+      const q = quizQuestions[currentQ];
+      answered = false;
+
+      // Progress
+      const pct = ((currentQ + 1) / quizQuestions.length) * 100;
+      document.getElementById('progressFill').style.width = pct + '%';
+      document.getElementById('progressText').textContent = (currentQ + 1) + ' / ' + quizQuestions.length;
+
+      // Question
+      document.getElementById('questionText').textContent = q.q;
+
+      // Options
+      const container = document.getElementById('optionsContainer');
+      container.innerHTML = '';
+      const letters = ['A','B','C','D'];
+      q.opts.forEach((opt, i) => {
+        const btn = document.createElement('button');
+        btn.className = 'quiz-option';
+        btn.innerHTML = `<span class="opt-letter">${letters[i]}</span> ${opt}`;
+        btn.onclick = () => selectAnswer(i, btn);
+        container.appendChild(btn);
+      });
+
+      // Reset
+      document.getElementById('quizFeedback').className = 'quiz-feedback';
+      document.getElementById('quizFeedback').textContent = '';
+      document.getElementById('nextBtn').style.display = 'none';
+      document.getElementById('liveScore').textContent = score;
+    }
+
+    function selectAnswer(idx, btn) {
+      if (answered) return;
+      answered = true;
+
+      const q = quizQuestions[currentQ];
+      const buttons = document.querySelectorAll('.quiz-option');
+      buttons.forEach(b => b.disabled = true);
+
+      const feedback = document.getElementById('quizFeedback');
+
+      if (idx === q.correct) {
+        score++;
+        btn.classList.add('correct');
+        feedback.className = 'quiz-feedback correct-fb show';
+        feedback.innerHTML = '<i class="fas fa-circle-check"></i> &nbsp; Correct! ' + q.explanation;
+      } else {
+        btn.classList.add('wrong');
+        buttons[q.correct].classList.add('correct');
+        feedback.className = 'quiz-feedback wrong-fb show';
+        feedback.innerHTML = '<i class="fas fa-circle-xmark"></i> &nbsp; Incorrect. ' + q.explanation;
+      }
+
+      document.getElementById('liveScore').textContent = score;
+      document.getElementById('nextBtn').style.display = 'inline-flex';
+    }
+
+    function nextQuestion() {
+      currentQ++;
+      loadQuestion();
+    }
+
+    function showResults() {
+      document.getElementById('quizGame').style.display    = 'none';
+      document.getElementById('quizProgress').style.display = 'none';
+      const result = document.getElementById('quizResult');
+      result.classList.add('show');
+
+      document.getElementById('finalScore').textContent = score;
+      document.getElementById('finalTotal').textContent  = '/ ' + quizQuestions.length;
+
+      const pct = (score / quizQuestions.length) * 100;
+      let label, desc;
+      if (pct === 100) {
+        label = '🏆 Perfect Score!';
+        desc  = 'Outstanding! You have mastered network threat identification. You\'re ready to work as a cybersecurity professional.';
+      } else if (pct >= 80) {
+        label = '🎯 Excellent!';
+        desc  = 'Great work! You have a strong understanding of network threats and defenses. Review the areas you missed to achieve perfection.';
+      } else if (pct >= 60) {
+        label = '👍 Good Job!';
+        desc  = 'Solid foundation! You understand the basics well. Revisit the Threats and Detection sections to improve further.';
+      } else if (pct >= 40) {
+        label = '📚 Keep Learning';
+        desc  = 'You\'re on the right track! Review all sections of this resource carefully and retake the quiz to improve your score.';
+      } else {
+        label = '🔰 Beginner Level';
+        desc  = 'Don\'t be discouraged! Cybersecurity is complex. Read through each section carefully and try again — practice makes perfect.';
+      }
+
+      document.getElementById('resultLabel').textContent = label;
+      document.getElementById('resultDesc').textContent  = desc;
+    }
+
+    function resetQuiz() {
+      currentQ = 0; score = 0; answered = false;
+      document.getElementById('quizGame').style.display    = 'block';
+      document.getElementById('quizProgress').style.display = 'flex';
+      document.getElementById('quizResult').classList.remove('show');
+      loadQuestion();
+    }
+
+    // Initialize quiz on page load
+    loadQuestion();
+
+    /* ==============================
+       GRID ANIMATION PAUSE ON SCROLL
+    ============================== */
+    // Pause ticker on hover for accessibility
+    const ticker = document.getElementById('ticker');
+    ticker.addEventListener('mouseenter', () => ticker.style.animationPlayState = 'paused');
+    ticker.addEventListener('mouseleave', () => ticker.style.animationPlayState = 'running');
+  </script>
+
+</body>
+</html>
